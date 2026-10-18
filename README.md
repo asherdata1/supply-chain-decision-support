@@ -1,111 +1,114 @@
 # Olist customer-experience risk
 
-Predict customer-experience risk early enough to prioritize operational monitoring
-and seller support. Asher Frank and Bereket Tarekegn use the same Olist source
-files for two complementary decision tasks.
+This project examines how Olist could prioritize limited customer-experience
+monitoring and seller-support resources using historical marketplace data.
 
-- **Order monitoring (primary):** At order placement, rank reviewed orders by the
-  probability of an eventual latest 1–2-star review using placement-time inputs.
-- **Seller support (secondary):** At a scoring date, rank historically active
-  sellers by the probability of at least one observed low-review event among
-  the next month's orders, allowing one additional month for review arrival.
+- **Order monitoring (primary):** Rank incoming orders by the probability of an
+  eventual observed 1–2-star review using information reasonably available at
+  placement.
+- **Seller support (secondary):** Rank historically active sellers by the
+  probability of at least one observed low-review event among the next month's
+  orders, allowing an additional month for review arrival.
 
-The seller task predicts observed event incidence, not an underlying seller
-quality score or low-review rate. Sellers with more orders have more opportunities
-for an event. Neither model establishes seller fault or intervention effectiveness.
+The seller target measures observed event incidence, not underlying seller
+quality. Neither analysis establishes seller fault or intervention effectiveness.
 
-## Notebook map
+## Deliverables and repository layout
 
-Run notebooks with `02_notebooks` as the working directory. Raw CSVs are in
-`01_data/raw`; preprocessing writes the shared order-item baseline to
-`01_data/preprocessed/olist_order_item_baseline.csv`. Results remain inline.
-
-| Notebook | Role |
+| Location | Purpose |
 |---|---|
-| `02_notebooks/asher_preprocessing.ipynb` | Inspect relational structure, consolidate reviews and payments before item joins, document source anomalies, and export the item baseline. |
-| `02_notebooks/asher_eda.ipynb` | Shared order-population, review-coverage, calendar, and observed-delivery context. |
-| `02_notebooks/asher_modeling.ipynb` | Primary order-risk model comparison, chronological evaluation, interpretation, and timely-delivery sensitivity. |
-| `02_notebooks/ADS505_Team09_Bereket_Seller_Model_FINAL.ipynb` | Current seller-history snapshots, chronological model selection/test, and seller prioritization. Reads the same raw tables; seller aggregation requires dated source reviews rather than the baseline's eventual-review summary. |
-| `02_notebooks/Bereket_Olist_Complete_EDA_Team09.ipynb` | Earlier seller exploration retained for provenance; not an additional required pipeline stage. |
-| `02_notebooks/ADS505_Team09_Olist_End_to_End_Modeling_AsherBereket.ipynb` | Superseded seller approach retained for provenance; do not use its target/results in the final CX narrative. |
-| `x_archive` | Earlier DataCo work, preserved separately from the Olist analysis. |
+| `03_final/Olist_Technical_Notebook.ipynb` | Primary technical handoff: preprocessing, EDA, modeling, technical briefs, and conclusions. |
+| `02_notebooks/01_preprocessing.ipynb` | Supporting source inspection and baseline construction. |
+| `02_notebooks/02_eda.ipynb` | Supporting exploratory analysis. |
+| `02_notebooks/03_modeling.ipynb` | Supporting order- and seller-level modeling. |
+| `01_data/raw/` | Nine original Olist CSV files, including category translations. |
+| `01_data/preprocessed/` | Shared order-item baseline produced by preprocessing. |
+| `x_archive/` | Legacy DataCo source data retained for provenance; not required to run the Olist notebook. Archived notebooks have been removed. |
 
-Dependencies are the packages imported by each notebook (Python, pandas, NumPy,
-Matplotlib, scikit-learn, and IPython). No `03_outputs` folder is required.
+The consolidated notebook is the submission source of truth. Its final editorial
+updates may differ from the supporting notebooks. The technical PDF, business
+brief, and presentation are separate submission artifacts. The AI reflection log
+is maintained separately; the notebook includes an AI assistance disclosure.
 
-## How the analyses fit together
+## Setup
 
-1. Establish the source-data structure, review population, and delivery context.
-2. Show whether placement-time information concentrates low-review risk among
-   orders, including orders that ultimately arrive on time.
-3. Use seller history for a separate, longer-horizon support queue. Historical
-   reviews and completed fulfillment are allowed here only when observable before
-   the seller scoring date; they are not placement-time order predictors.
-4. Present the two queues as complementary monitoring tools. A direct combination
-   of order scores, seller scores, and business value has not been implemented or
-   evaluated; do not describe this as a validated integrated scoring system.
+The notebook was validated with **Python 3.11.15**. From the repository root,
+create an environment and install the recorded dependencies:
 
-Keep the two modeling notebooks separate: their observation grains, eligibility,
-review availability, targets, and evaluation dates differ. Reuse shared EDA in
-one narrative rather than repeating every raw-data audit in the final report.
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m ipykernel install --user --name olist-team09 --display-name "Olist Team 09"
+```
 
-## Seller integration review — October 11, 2026
+On Windows, activate the environment using `.venv\Scripts\activate` instead.
+Dependency versions identify the validated environment; other versions may change
+results or require compatibility adjustments.
 
-The seller branch was merged locally while preserving both contributors' history.
-The current seller notebook's loading path now uses the repository's raw data,
-and its outputs were regenerated after the order-level review-attribution fix.
-No seller feature definitions, labels, split dates, or model settings were changed.
+## Data and execution
 
-- **Timing:** At least five orders in the prior 180 days establishes eligibility.
-  Scoring dates are July/September/November 2017 and January/March/May 2018.
-  Each label uses the scoring month's orders and reviews arriving before two
-  months after scoring. The previous cohort's label deadline matches the next
-  scoring date; the earlier overlapping-label concern is addressed by this design.
-- **Evaluation:** Train 1,702 seller snapshots; validation 1,712; May test 1,030
-  (283 positives, 27.5%). Regenerated test AP is about 0.625 and ROC-AUC 0.791.
-  The top 103 sellers contain 76 positives: 73.8% precision, 26.9% capture,
-  and 2.69× lift. This reproduces the headline result; other capacity table values
-  and other metrics should be taken from the regenerated outputs.
-- **Value beyond volume:** Ranking by historical order count alone captures
-  72 positives among the top 103 (2.54× lift; AP 0.557). The model adds four
-  captured positive sellers at this capacity. Report this simple benchmark
-  alongside the forest rather than attributing all lift to modeled CX quality.
-  Ties in the simple volume ranking make its exact top-capacity count sensitive
-  to tie handling.
-- **Exposure:** 320 test sellers have no next-month orders; 321 have no reviewed
-  next-month orders. All receive zero labels under the documented observed-event
-  target. Among sellers with 1–4 future orders, 20.7% have an event; with 20+
-  orders, 95.2% do. These descriptive exposure bands are not model predictors.
-- **Attribution:** Reviews are selected once per order before attribution to every
-  seller on that order. This preserves multi-seller participation, but cannot
-  establish which seller caused a poor experience.
+The raw CSVs are included under `01_data/raw/`. If obtaining a fresh dataset,
+download the Olist dataset linked below and place its nine CSV files directly in
+that directory, preserving their original names. No credentials or API are
+required by the notebook itself.
 
-### Reconcile before final submission
+From the repository root:
 
-- The seller notebook compares exact delivery timestamps with estimated-date
-  midnight; the order analysis uses calendar dates. Its saved operational EDA
-  therefore understates on-time delivery. Calendar-date calculations give 57.2%
-  of **all** low-reviewed orders delivered on time, or 67.6% of low-reviewed orders
-  **with observed delivery**. State the denominator when using the approximately
-  68% claim and use a consistent delivery definition in the final report.
-- `hist_unique_products` and `hist_unique_categories` sum within-order distinct
-  counts across orders. They are not distinct products/categories across the
-  entire historical window; their descriptions should make that clear.
-- The monthly label deadline permits approximately 30–61 days of follow-up,
-  depending on purchase date. It defines an observed-by-deadline event, not an
-  eventual complete-review outcome. Review latency may affect the target.
-- Seller-history predictors dominate native importance, while historical review
-  rates contribute little. Avoid claiming this identifies deterioration in seller
-  quality without further evidence.
-- Review-definition sensitivity reuses the May test cohort. After inspection,
-  call this a held-out historical test with post-evaluation sensitivity checks,
-  rather than an indefinitely untouched test. Seller snapshots also share sellers,
-  and multi-seller orders share review outcomes.
-- The updated order notebook still contains an association-rule interpretation
-  after rule mining was removed. Resolve that leftover narrative and the draft
-  report's quantitative claims during final editorial consolidation.
+```bash
+cd 03_final
+python -m jupyterlab Olist_Technical_Notebook.ipynb
+```
+
+Select the **Olist Team 09** kernel and run all cells in order. Keep `03_final/`
+as the notebook's working directory. Preprocessing writes
+`../01_data/preprocessed/olist_order_item_baseline.csv`; subsequent sections read
+that baseline and the raw tables. Results, charts, and tables remain inline;
+no separate outputs folder is required. Grid searches and permutation importance
+are the computationally intensive steps; runtime depends on the machine.
+
+The consolidated notebook has completed an end-to-end validation run. It contains
+all imports in its first cell and a linked table of contents. To use the modular
+workflow instead, run the three supporting notebooks in numerical order from
+`02_notebooks/`. The final consolidated notebook remains authoritative for
+submission interpretations.
+
+## Main findings and decision limits
+
+At top-10% order-monitoring capacity, the selected gradient boosting model captures
+24.25% of low reviews versus 20.75% for item-count ranking on the random holdout.
+On the chronological holdout, it captures 20.54% versus 21.64% for the simple rule.
+Useful ranking signal therefore does not establish a consistent incremental
+advantage over item count. The later-period evaluation is a retrospective
+sensitivity analysis using settings selected on the random training sample.
+
+Basket complexity remains associated with low reviews among timely deliveries.
+These descriptive findings motivate operational investigation, not causal claims.
+Calendar-date delivery comparisons exclude orders without the dates needed for
+classification; missing reviews are unknown outcomes, not favorable reviews.
+
+The seller analysis uses its own historical features, eligibility, target, and
+chronological splits. Its performance is not directly comparable to the order
+model. Activity creates opportunities for future low-review events, so an
+activity-ranking baseline and prospective intervention evaluation are prerequisites
+for claims of operational benefit. No integrated order/seller scoring system or
+intervention effect is evaluated.
+
+## Team contributions
+
+- **Asher Frank:** Order-level preprocessing, EDA, placement-time modeling,
+  simple-rule benchmarks, and follow-up basket-complexity analyses; consolidation
+  of the technical narrative and business deliverables.
+- **Bereket Tarekegn:** Seller-level exploration, historical feature and target
+  construction, seller modeling and temporal evaluation; review corrections and
+  initial technical report drafting.
+
+Both contributors reviewed and refined the project. Git history preserves its
+development; the notebooks describe the final analytical decisions.
 
 ## Data source
 
 Olist. (2018). *Brazilian E-Commerce Public Dataset by Olist* [Data set].
 [Kaggle dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
+
+[Team repository](https://github.com/asherdata1/supply-chain-decision-support).
