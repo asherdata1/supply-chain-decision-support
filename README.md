@@ -23,7 +23,6 @@ quality. Neither analysis establishes seller fault or intervention effectiveness
 | `02_notebooks/03_modeling.ipynb` | Supporting order- and seller-level modeling. |
 | `01_data/raw/` | Nine original Olist CSV files, including category translations. |
 | `01_data/preprocessed/` | Shared order-item baseline produced by preprocessing. |
-| `x_archive/` | Legacy DataCo source data retained for provenance; not required to run the Olist notebook. Archived notebooks have been removed. |
 
 The consolidated notebook is the submission source of truth. Its final editorial
 updates may differ from the supporting notebooks. The technical PDF, business
